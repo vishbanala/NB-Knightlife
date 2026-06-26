@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Location Tracker - KnightLife Safe</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        #map {
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+        
+        .status-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 16px 20px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #DC143C;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        .status-text {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 12px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(220, 20, 60, 0.3);
+            border-top: 4px solid #DC143C;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(220, 20, 60, 0.95);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            z-index: 2000;
+            max-width: 90%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .error h2 {
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+        
+        /* Custom marker icon */
+        .custom-marker {
+            background: #DC143C;
+            width: 24px;
+            height: 24px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 3px solid #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+        
+        .custom-marker::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-bar">
+        <div style="display: flex; align-items: center;">
+            <div class="status-text">📍 Live Location Tracking</div>
+            <div class="status-indicator" id="statusIndicator"></div>
+        </div>
+        <div id="lastUpdate" style="font-size: 12px; color: #999;"></div>
+    </div>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div>Connecting to location service...</div>
+    </div>
+    
+    <div class="error" id="error" style="display: none;"></div>
+    
+    <div id="map"></div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+        import { getFirestore, collection, query, where, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCBpOJiuN7sh9SFsYg802amkfro3CgFVFE",
+            authDomain: "knightlife-f968a.firebaseapp.com",
+            projectId: "knightlife-f968a",
+            storageBucket: "knightlife-f968a.firebasestorage.app",
+            messagingSenderId: "15032084494",
+            appId: "1:15032084494:web:fa1fac7e2a7da85c90745f"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Get session ID from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('sessionId');
+        
+        if (!sessionId) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').innerHTML = '<h2>Missing Session ID</h2><p>Please use the link from the SMS message.</p>';
+            document.getElementById('statusIndicator').style.background = '#dc143c';
+            return;
+        }
+        
+        // Initialize map variables
+        let map = null;
+        let marker = null;
+        let pathCoordinates = [];
+        let polyline = null;
+        let isMapInitialized = false;
+        
+        // Custom red marker icon
+        const redIcon = L.divIcon({
+            className: 'custom-marker',
+            html: '',
+            iconSize: [24, 24],
+            iconAnchor: [12, 24],
+            popupAnchor: [0, -24]
+        });
+        
+        function initMap(lat, lng) {
+            if (isMapInitialized) return;
+            
+            // Initialize Leaflet map
+            map = L.map('map').setView([lat, lng], 16);
+            
+            // Add OpenStreetMap tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+            
+            // Create initial marker
+            marker = L.marker([lat, lng], { icon: redIcon }).addTo(map);
+            marker.bindPopup('<b>Current Location</b>').openPopup();
+            
+            // Create polyline for path tracking
+            polyline = L.polyline([], {
+                color: '#DC143C',
+                weight: 4,
+                opacity: 0.8
+            }).addTo(map);
+            
+            isMapInitialized = true;
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function updateLocation(lat, lng, timestamp) {
+            if (!isMapInitialized) {
+                initMap(lat, lng);
+                return;
+            }
+            
+            const position = [lat, lng];
+            
+            // Update marker position
+            marker.setLatLng(position);
+            map.setView(position, map.getZoom());
+            
+            // Add to path (avoid duplicates)
+            if (pathCoordinates.length === 0 || 
+                pathCoordinates[pathCoordinates.length - 1][0] !== lat || 
+                pathCoordinates[pathCoordinates.length - 1][1] !== lng) {
+                pathCoordinates.push(position);
+                polyline.setLatLngs(pathCoordinates);
+            }
+            
+            // Update status
+            document.getElementById('statusIndicator').style.background = '#28a745';
+            const updateTime = timestamp ? new Date(timestamp.toMillis ? timestamp.toMillis() : timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+            document.querySelector('.status-text').textContent = '📍 Live Location Active';
+            document.getElementById('lastUpdate').textContent = `Updated: ${updateTime}`;
+        }
+        
+        // Listen to Firebase for location updates
+        // Note: We query all documents and sort client-side to avoid needing a Firestore index
+        const locationRef = collection(db, 'location_tracking');
+        const q = query(
+            locationRef,
+            where('sessionId', '==', sessionId)
+        );
+        
+        const unsubscribe = onSnapshot(
+            q,
+            (snapshot) => {
+                if (snapshot.empty) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').innerHTML = '<h2>No Location Data</h2><p>The tracking session may have ended or no location data is available yet.</p>';
+                    document.getElementById('statusIndicator').style.background = '#dc143c';
+                    document.querySelector('.status-text').textContent = '📍 Tracking Inactive';
+                    return;
+                }
+                
+                // Get all location updates and sort by timestamp (newest first)
+                let latestLocation = null;
+                let isStopped = false;
+                
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.type === 'stopped') {
+                        isStopped = true;
+                    } else if (data.latitude && data.longitude) {
+                        // Find the most recent location update
+                        const timestamp = data.timestamp?.toMillis ? data.timestamp.toMillis() : data.timestamp;
+                        if (!latestLocation || timestamp > latestLocation.timestamp) {
+                            latestLocation = {
+                                latitude: data.latitude,
+                                longitude: data.longitude,
+                                timestamp: timestamp || Date.now()
+                            };
+                        }
+                    }
+                });
+                
+                if (isStopped) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('statusIndicator').style.background = '#dc143c';
+                    document.querySelector('.status-text').textContent = '📍 Tracking Ended';
+                    document.getElementById('lastUpdate').textContent = 'Session ended';
+                } else if (latestLocation) {
+                    updateLocation(latestLocation.latitude, latestLocation.longitude, latestLocation.timestamp);
+                    document.getElementById('error').style.display = 'none';
+                }
+            },
+            (error) => {
+                console.error('Error listening to location updates:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').innerHTML = '<h2>Connection Error</h2><p>Error loading location. Please refresh the page or check your internet connection.</p>';
+                document.getElementById('statusIndicator').style.background = '#dc143c';
+            }
+        );
+    </script>
+</body>
+</html>
+
