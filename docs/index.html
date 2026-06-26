@@ -3,44 +3,379 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NB KnightLife</title>
+  <meta name="description" content="NB KnightLife — discover fraternity events, explore the map, and share your walk home safely at Rutgers." />
+  <title>NB KnightLife — Rutgers Nightlife</title>
+  <link rel="icon" href="assets/icon.png" />
   <style>
+    :root {
+      --crimson: #DC143C;
+      --crimson-dark: #a80f2e;
+      --crimson-glow: rgba(220, 20, 60, 0.35);
+      --bg: #080808;
+      --surface: #111111;
+      --surface-2: #1a1a1a;
+      --text: #f5f5f5;
+      --muted: #9ca3af;
+      --border: rgba(220, 20, 60, 0.25);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #000;
-      color: #fff;
-      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .glow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, var(--crimson-glow), transparent 60%),
+        radial-gradient(ellipse 40% 30% at 100% 50%, rgba(220, 20, 60, 0.08), transparent),
+        radial-gradient(ellipse 40% 30% at 0% 80%, rgba(220, 20, 60, 0.06), transparent);
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Nav */
+    nav {
       display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 24px;
+      justify-content: space-between;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
     }
-    .card {
-      max-width: 520px;
-      text-align: center;
-      border: 1px solid #DC143C;
-      border-radius: 16px;
-      padding: 40px 32px;
-    }
-    h1 { color: #DC143C; font-size: 2rem; margin-bottom: 12px; }
-    p { color: #ccc; line-height: 1.6; margin-bottom: 24px; }
-    a {
-      display: inline-block;
-      background: #DC143C;
-      color: #fff;
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
       text-decoration: none;
-      padding: 12px 24px;
+      color: var(--text);
+    }
+
+    .logo img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .logo span {
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 8px 14px;
       border-radius: 8px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+      background: var(--surface-2);
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 72px 0 56px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
       font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--crimson);
+      background: rgba(220, 20, 60, 0.12);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 100px;
+      margin-bottom: 24px;
+    }
+
+    .hero-icon {
+      width: 96px;
+      height: 96px;
+      border-radius: 22px;
+      margin-bottom: 28px;
+      box-shadow:
+        0 0 0 1px var(--border),
+        0 20px 50px rgba(0, 0, 0, 0.5),
+        0 0 60px var(--crimson-glow);
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 6vw, 3.5rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+
+    h1 em {
+      font-style: normal;
+      color: var(--crimson);
+    }
+
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto 36px;
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+
+    .btn:hover { transform: translateY(-2px); }
+
+    .btn-primary {
+      background: var(--crimson);
+      color: #fff;
+      box-shadow: 0 8px 24px var(--crimson-glow);
+    }
+
+    .btn-primary:hover {
+      background: var(--crimson-dark);
+      box-shadow: 0 12px 32px var(--crimson-glow);
+    }
+
+    .btn-ghost {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { background: var(--surface-2); }
+
+    /* Features */
+    .section-title {
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--crimson);
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: clamp(1.6rem, 4vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 40px;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      padding-bottom: 72px;
+    }
+
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .feature:hover {
+      border-color: rgba(220, 20, 60, 0.5);
+      transform: translateY(-3px);
+    }
+
+    .feature-icon {
+      font-size: 1.75rem;
+      margin-bottom: 14px;
+    }
+
+    .feature h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .feature p {
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    /* Safe walk callout */
+    .callout {
+      background: linear-gradient(135deg, rgba(220, 20, 60, 0.15), rgba(220, 20, 60, 0.04));
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 32px;
+      text-align: center;
+      margin-bottom: 72px;
+    }
+
+    .callout h3 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .callout p {
+      color: var(--muted);
+      max-width: 480px;
+      margin: 0 auto 20px;
+      font-size: 0.95rem;
+    }
+
+    .callout a {
+      color: var(--crimson);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .callout a:hover { text-decoration: underline; }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0 48px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    footer p {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color 0.2s;
+    }
+
+    footer a:hover { color: var(--crimson); }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .nav-links { display: none; }
+      .hero { padding-top: 48px; }
+      footer { flex-direction: column; text-align: center; }
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>NB KnightLife</h1>
-    <p>Rutgers nightlife app — events, maps, and Safe Walk location sharing for trusted contacts.</p>
-    <a href="https://github.com/vishbanala/NB-Knightlife">View on GitHub</a>
+  <div class="glow"></div>
+
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="#">
+        <img src="assets/icon.png" alt="NB KnightLife" />
+        <span>NB KnightLife</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#safe">Safe Walk</a>
+        <a href="https://github.com/vishbanala/NB-Knightlife">Source</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="badge">Rutgers University</div>
+      <img class="hero-icon" src="assets/icon.png" alt="NB KnightLife app icon" />
+      <h1>Your night, <em>your way</em></h1>
+      <p>Discover fraternity events, explore what's happening on campus, and get home safely with live location sharing for people you trust.</p>
+      <div class="cta-row">
+        <span class="btn btn-primary">Available on iOS</span>
+        <a class="btn btn-ghost" href="https://github.com/vishbanala/NB-Knightlife">View source on GitHub</a>
+      </div>
+    </section>
+
+    <p class="section-title" id="features">What you get</p>
+    <h2>Everything for Rutgers nightlife</h2>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🎉</div>
+        <h3>Events</h3>
+        <p>Browse fraternity events and see what's going on tonight around campus.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🗺️</div>
+        <h3>Campus Map</h3>
+        <p>Find houses and events on an interactive map so you always know where to go.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🛡️</div>
+        <h3>Safe Walk</h3>
+        <p>Share your live location with trusted contacts while you walk home. They get a link — no app required.</p>
+      </div>
+    </div>
+
+    <div class="callout" id="safe">
+      <h3>Safe Walk tracking</h3>
+      <p>Got a tracking link from a friend? Open it here to see their live location on a map in real time.</p>
+      <a href="track.html">Open tracking page →</a>
+    </div>
+
+    <footer>
+      <p>© 2026 NB KnightLife · Not affiliated with Rutgers University</p>
+      <div class="footer-links">
+        <a href="https://github.com/vishbanala/NB-Knightlife">GitHub</a>
+        <a href="track.html">Tracking</a>
+      </div>
+    </footer>
   </div>
 </body>
 </html>
